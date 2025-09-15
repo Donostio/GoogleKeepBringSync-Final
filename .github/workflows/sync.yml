@@ -31,6 +31,3 @@ jobs:
           pip install python-bring-api
           echo "$GOOGLE_TOKEN" > token.txt
           python sync_keep_bring.py
-          
-      - name: Debug - Show Bring! List ID
-        run: echo "Bring! List UUID: ${{ env.BRING_LIST_UUID }}"
