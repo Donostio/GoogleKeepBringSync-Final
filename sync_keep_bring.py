@@ -8,10 +8,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 # Environment variables
 GOOGLE_EMAIL = os.getenv("GOOGLE_EMAIL")
-KEEP_LIST_ID = os.getenv("KEEP_LIST_ID", "f8b6189b-d2e9-45ff-b674-76a7458d7d13")  # Explicit UUID
+KEEP_LIST_ID = os.getenv("KEEP_LIST_ID")  # <-- Google Keep ID already set
 BRING_EMAIL = os.getenv("BRING_EMAIL")
 BRING_PASSWORD = os.getenv("BRING_PASSWORD")
-BRING_LIST_NAME = os.getenv("BRING_LIST_NAME", "Shopping")
+
+# Use explicit Bring! UUID instead of name
+BRING_LIST_UUID = os.getenv("BRING_LIST_UUID", "f8b6189b-d2e9-45ff-b674-76a7458d7d13")
 
 # Sync mode: 0 = both directions, 1 = Keep -> Bring only, 2 = Bring -> Keep only
 SYNC_MODE = int(os.getenv("SYNC_MODE", 0))
@@ -55,30 +57,20 @@ def login_bring(email, password):
     return None
 
 
-def get_bring_items(bring, list_name):
+def get_bring_items(bring, list_uuid):
     try:
-        lists = bring.loadLists()
-        list_uuid = None
-        for l in lists:
-            if l["name"].lower() == list_name.lower():
-                list_uuid = l["listUuid"]
-                break
-        if not list_uuid:
-            logging.error(f"Bring list '{list_name}' not found")
-            return None
-
-        logging.info(f"Fetched Bring list: {list_name} ({list_uuid})")
-        return bring.getItems(list_uuid), list_uuid
+        logging.info(f"Fetching Bring items for list UUID: {list_uuid}")
+        return bring.getItems(list_uuid)
     except Exception as e:
         logging.error(f"Error fetching Bring list: {e}")
-        return None, None
+        return None
 
 
 # --- SYNC FUNCTIONS ---
 
 def sync_keep_to_bring(keep, keep_list, bring, bring_list_uuid):
     keep_items = [item.text for item in keep_list.items if not item.checked]
-    bring_items, _ = bring.getItems(bring_list_uuid)
+    bring_items = bring.getItems(bring_list_uuid)
     bring_item_names = [i["name"] for i in bring_items["purchase"]]
 
     for item in keep_items:
@@ -115,19 +107,20 @@ def main():
         logging.error("Google Keep list not found. Exiting.")
         return
 
-    # Fetch Bring items
-    bring_items, bring_list_uuid = get_bring_items(bring, BRING_LIST_NAME)
+    # Fetch Bring items (using explicit UUID)
+    bring_items = get_bring_items(bring, BRING_LIST_UUID)
     if not bring_items:
         logging.error("Bring list not found. Exiting.")
         return
 
     # Perform sync
     if SYNC_MODE in [0, 1]:
-        sync_keep_to_bring(keep, keep_list, bring, bring_list_uuid)
+        sync_keep_to_bring(keep, keep_list, bring, BRING_LIST_UUID)
     if SYNC_MODE in [0, 2]:
         sync_bring_to_keep(keep, keep_list, bring_items)
 
 
 if __name__ == "__main__":
     main()
+
 
