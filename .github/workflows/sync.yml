@@ -2,9 +2,9 @@ name: Google Keep <> Bring Sync
 
 on:
   schedule:
-    - cron: '0 */1 * * *'
+    - cron: '0 */1 * * *'  # Runs every hour
   
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   sync:
@@ -17,10 +17,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify script is present
+      - name: Force Re-sync of Script
         run: |
-          ls -la sync_keep_bring.py
-          echo "Script found, proceeding with execution..."
+          rm -f sync_keep_bring.py
+          python -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/Donostio/ShoppingSync/main/sync_keep_bring.py', 'sync_keep_bring.py')"
 
       - name: Setup and Run
         env:
@@ -30,6 +30,7 @@ jobs:
           BRING_PASSWORD: ${{ secrets.BRING_PASSWORD }}
           SYNC_MODE: 0
           BRING_LIST_NAME: SHOPPING
+          BRING_LIST_UUID: f8b6189b-d2e9-45ff-b674-76a7458d7d13
           GOOGLE_TOKEN: ${{ secrets.GOOGLE_TOKEN }}
         run: |
           pip install gkeepapi
