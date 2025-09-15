@@ -119,8 +119,10 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
     logging.info(f"Normalized Bring Items: {list(normalized_bring_item_names)}")
 
     # Sync from Google Keep to Bring!
+    logging.info(f"Checking Keep->Bring sync: sync_mode={sync_mode}, should sync={sync_mode in [0, 2]}")
     if sync_mode in [0, 2]:
         bring_list_id = bring_items.get('listUuid') if bring_items else None
+        logging.info(f"Bring list ID: {bring_list_id}")
         if bring_list_id:
             logging.info(f"Processing {len(normalized_keep_items_dict)} Google Keep items for sync to Bring...")
             items_processed = 0
@@ -143,6 +145,10 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
                         logging.warning(f"⚠️ Could not add '{item_obj.text.strip()}' to Bring!: {e}")
             
             logging.info(f"Keep->Bring sync summary: Processed {items_processed} items, added {items_added} new items")
+        else:
+            logging.error("No Bring list ID found - cannot sync Keep items to Bring!")
+    else:
+        logging.info(f"Keep->Bring sync disabled for sync_mode {sync_mode}")
 
     # Sync from Bring! to Google Keep
     if sync_mode in [0, 1] and bring_items and 'purchase' in bring_items:
