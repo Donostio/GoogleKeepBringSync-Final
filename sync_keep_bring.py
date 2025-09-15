@@ -53,7 +53,20 @@ def get_bring_list(bring, list_name=None):
             logging.error(f"Bring! list '{list_name}' not found. Found {len(lists)} lists.")
             return None
 
-        return bring.getItems(bring_list.get('listUuid'))
+        # Get the items AND include the list UUID
+        list_uuid = bring_list.get('listUuid')
+        items = bring.getItems(list_uuid)
+        
+        # Return both the items and the list UUID
+        if isinstance(items, dict):
+            items['listUuid'] = list_uuid
+            return items
+        else:
+            # If items is not a dict, create a dict with the items and UUID
+            return {
+                'listUuid': list_uuid,
+                'purchase': items if items else []
+            }
     except Exception as e:
         logging.error(f"Error getting Bring! list: {e}")
         return None
