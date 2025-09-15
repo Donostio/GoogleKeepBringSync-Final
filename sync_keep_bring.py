@@ -15,7 +15,6 @@ def get_keep_list(keep, list_id):
             logging.error("Google Keep note not found.")
             return None
         
-        # Check if the note is a valid list
         if not isinstance(note, List):
             logging.error("Google Keep ID is for a Note, not a List. Please use the ID of a checklist.")
             return None
@@ -31,7 +30,6 @@ def get_bring_list(bring, list_name=None):
     try:
         response = bring.loadLists()
         
-        # Check if the response is valid and contains the 'lists' key
         if not isinstance(response, dict) or 'lists' not in response:
             logging.error("Bring! API returned an invalid response. 'lists' key not found.")
             return None
@@ -55,12 +53,10 @@ def get_bring_list(bring, list_name=None):
         list_uuid = bring_list.get('listUuid')
         items = bring.getItems(list_uuid)
         
-        # Return both the items and the list UUID
         if isinstance(items, dict):
             items['listUuid'] = list_uuid
             return items
         else:
-            # If items is not a dict, create a dict with the items and UUID
             return {
                 'listUuid': list_uuid,
                 'purchase': items if items else []
@@ -89,7 +85,6 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
     """Performs the synchronization logic between the two lists."""
     logging.info(f"Starting sync in mode: {sync_mode}")
     
-    # Normalize Google Keep items for comparison
     normalized_keep_items_dict = {
         ''.join(char for char in item.text.strip().lower() if char.isalnum()): item
         for item in keep_list.all() if hasattr(item, 'text') and item.text
@@ -97,7 +92,6 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
     
     logging.info(f"Normalized Keep Items: {list(normalized_keep_items_dict.keys())}")
     
-    # Normalize Bring! item names for comparison
     normalized_bring_item_names = {
         ''.join(char for char in item.get('name', '').strip().lower() if char.isalnum())
         for item in bring_items.get('purchase', []) if item.get('name')
@@ -105,8 +99,6 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
     
     logging.info(f"Normalized Bring Items: {list(normalized_bring_item_names)}")
 
-    # Sync from Google Keep to Bring!
-    logging.info(f"Checking Keep->Bring sync: sync_mode={sync_mode}, should sync={sync_mode in [0, 2]}")
     if sync_mode in [0, 2]:
         bring_list_id = bring_items.get('listUuid') if bring_items else None
         logging.info(f"Bring list ID: {bring_list_id}")
@@ -118,7 +110,6 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
             for normalized_name, item_obj in normalized_keep_items_dict.items():
                 items_processed += 1
                 
-                # Use the new logging function for clarity
                 is_checked = getattr(item_obj, 'checked', False)
                 exists_in_bring = normalized_name in normalized_bring_item_names
                 log_item_status(item_obj.text, normalized_name, is_checked, exists_in_bring)
@@ -136,7 +127,6 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
     else:
         logging.info(f"Keep->Bring sync disabled for sync_mode {sync_mode}")
 
-    # Sync from Bring! to Google Keep
     if sync_mode in [0, 1] and bring_items and 'purchase' in bring_items:
         logging.info(f"Processing {len(bring_items['purchase'])} Bring items for sync to Google Keep...")
         items_processed = 0
@@ -173,7 +163,6 @@ def main():
     sync_mode = int(os.environ.get('SYNC_MODE', 0))
     bring_list_name = os.environ.get('BRING_LIST_NAME')
 
-    # Authentication with Google Keep
     keep = Keep()
     try:
         logging.info("Logging into Google Keep...")
@@ -183,7 +172,6 @@ def main():
         logging.error(f"Failed to log into Google Keep: {e}")
         return
 
-    # Authentication with Bring!
     bring = Bring(bring_email, bring_password)
     try:
         logging.info("Logging into Bring!...")
