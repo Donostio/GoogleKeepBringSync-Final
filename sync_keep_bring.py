@@ -122,7 +122,12 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
     if sync_mode in [0, 2]:
         bring_list_id = bring_items.get('listUuid') if bring_items else None
         if bring_list_id:
+            logging.info(f"Processing {len(normalized_keep_items_dict)} Google Keep items for sync to Bring...")
+            items_processed = 0
+            items_added = 0
+            
             for normalized_name, item_obj in normalized_keep_items_dict.items():
+                items_processed += 1
                 
                 # Use the new logging function for clarity
                 is_checked = getattr(item_obj, 'checked', False)
@@ -133,21 +138,37 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
                     try:
                         bring_client.saveItem(bring_list_id, item_obj.text.strip())
                         logging.info(f"✅ Added '{item_obj.text.strip()}' to Bring!")
+                        items_added += 1
                     except Exception as e:
                         logging.warning(f"⚠️ Could not add '{item_obj.text.strip()}' to Bring!: {e}")
+            
+            logging.info(f"Keep->Bring sync summary: Processed {items_processed} items, added {items_added} new items")
 
     # Sync from Bring! to Google Keep
     if sync_mode in [0, 1] and bring_items and 'purchase' in bring_items:
+        logging.info(f"Processing {len(bring_items['purchase'])} Bring items for sync to Google Keep...")
+        items_processed = 0
+        items_added = 0
+        
         for item in bring_items['purchase']:
+            items_processed += 1
             item_spec = item.get('name', '').strip()
             normalized_spec = ''.join(char for char in item_spec.lower() if char.isalnum())
+            
+            logging.info(f"Processing Bring item: '{item_spec}' (normalized: '{normalized_spec}')")
+            
             if item_spec and normalized_spec and normalized_spec not in normalized_keep_items_dict:
                 try:
                     keep_list.add(item_spec)
                     keep_client.sync()
                     logging.info(f"✅ Added '{item_spec}' to Google Keep")
+                    items_added += 1
                 except Exception as e:
                     logging.warning(f"⚠️ Could not add '{item_spec}' to Google Keep: {e}")
+            else:
+                logging.info(f"    -> Skipped: Already exists in Google Keep")
+        
+        logging.info(f"Bring->Keep sync summary: Processed {items_processed} items, added {items_added} new items")
 
     logging.info("Sync complete.")
 
