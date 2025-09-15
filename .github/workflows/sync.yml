@@ -1,0 +1,38 @@
+name: Google Keep <> Bring Sync
+
+on:
+  schedule:
+    - cron: '0 */1 * * *'
+  
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    container: python:3.10-slim
+    
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Force Re-sync of Script
+        run: |
+          rm -f sync_keep_bring.py
+          python -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/Donostio/ShoppingSync/main/sync_keep_bring.py', 'sync_keep_bring.py')"
+
+      - name: Setup and Run
+        env:
+          GOOGLE_EMAIL: ${{ secrets.GOOGLE_EMAIL }}
+          KEEP_LIST_ID: ${{ secrets.KEEP_LIST_ID }}
+          BRING_EMAIL: ${{ secrets.BRING_EMAIL }}
+          BRING_PASSWORD: ${{ secrets.BRING_PASSWORD }}
+          SYNC_MODE: 0
+          BRING_LIST_NAME: SHOPPING
+          GOOGLE_TOKEN: ${{ secrets.GOOGLE_TOKEN }}
+        run: |
+          pip install gkeepapi
+          pip install python-bring-api
+          echo "$GOOGLE_TOKEN" > token.txt
+          python sync_keep_bring.py
