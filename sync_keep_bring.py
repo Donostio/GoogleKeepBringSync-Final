@@ -4,9 +4,6 @@ from gkeepapi import Keep
 from gkeepapi.node import List
 from python_bring_api.bring import Bring
 
-# Enable debug logging for the GitHub Actions runner
-# This must be done in the workflow file, not here.
-# For now, we will use INFO level for our script.
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_keep_list(keep, list_id):
@@ -18,11 +15,12 @@ def get_keep_list(keep, list_id):
             logging.error("Google Keep note not found.")
             return None
         
+        # Check if the note is a valid list
         if not isinstance(note, List):
-            logging.error("Google Keep ID is for a Note, not a List.")
+            logging.error("Google Keep ID is for a Note, not a List. Please use the ID of a checklist.")
             return None
             
-        logging.info(f"Found {len(note.items)} items in Google Keep list.")
+        logging.info(f"Found {len(note.all())} items in Google Keep list.")
         return note
     except Exception as e:
         logging.error(f"Error getting Google Keep list: {e}")
@@ -32,8 +30,10 @@ def get_bring_list(bring, list_name=None):
     """Retrieves the Bring! list, either by name or the first one found."""
     try:
         response = bring.loadLists()
+        
+        # Check if the response is valid and contains the 'lists' key
         if not isinstance(response, dict) or 'lists' not in response:
-            logging.error("Bring! API returned an invalid response.")
+            logging.error("Bring! API returned an invalid response. 'lists' key not found.")
             return None
         
         lists = response['lists']
@@ -48,7 +48,7 @@ def get_bring_list(bring, list_name=None):
             bring_list = lists[0]
         
         if not bring_list:
-            logging.error(f"Bring! list '{list_name}' not found.")
+            logging.error(f"Bring! list '{list_name}' not found. Found {len(lists)} lists.")
             return None
 
         return bring.getItems(bring_list.get('listUuid'))
@@ -76,18 +76,21 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
     """Performs the synchronization logic between the two lists."""
     logging.info(f"Starting sync in mode: {sync_mode}")
     
+    # Normalize Google Keep items for comparison
     normalized_keep_items_dict = {
         ''.join(char for char in item.text.strip().lower() if char.isalnum()): item
-        for item in keep_list.items
+        for item in keep_list.all()
     }
     
     logging.info(f"Normalized Keep Items: {list(normalized_keep_items_dict.keys())}")
     
+    # Normalize Bring! item names for comparison
     normalized_bring_item_names = {
         ''.join(char for char in item.get('name', '').strip().lower() if char.isalnum())
         for item in bring_items.get('purchase', []) if item.get('name')
     }
 
+    # Sync from Google Keep to Bring!
     if sync_mode in [0, 2]:
         bring_list_id = bring_items.get('listUuid')
         if bring_list_id:
@@ -105,6 +108,7 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
                     except Exception as e:
                         logging.warning(f"⚠️ Could not add '{item_obj.text.strip()}' to Bring!: {e}")
 
+    # Sync from Bring! to Google Keep
     if sync_mode in [0, 1]:
         for item in bring_items['purchase']:
             item_spec = item.get('name', '').strip()
@@ -125,11 +129,12 @@ def main():
     keep_list_id = os.environ.get('KEEP_LIST_ID')
     bring_email = os.environ.get('BRING_EMAIL')
     bring_password = os.environ.get('BRING_PASSWORD')
-    google_token = os.environ.get('GOOGLE_TOKEN') or open('token.txt').read().strip()
+    google_token = os.environ.get('GOOGLE_TOKEN')
 
     sync_mode = int(os.environ.get('SYNC_MODE', 0))
     bring_list_name = os.environ.get('BRING_LIST_NAME')
 
+    # Authentication with Google Keep
     keep = Keep()
     try:
         logging.info("Logging into Google Keep...")
@@ -139,6 +144,7 @@ def main():
         logging.error(f"Failed to log into Google Keep: {e}")
         return
 
+    # Authentication with Bring!
     bring = Bring(bring_email, bring_password)
     try:
         logging.info("Logging into Bring!...")
