@@ -9,6 +9,7 @@ def main():
     """Main function to test Bring! API calls."""
     bring_email = os.environ.get('BRING_EMAIL')
     bring_password = os.environ.get('BRING_PASSWORD')
+    bring_list_uuid = os.environ.get('BRING_LIST_UUID')  # from secret
 
     # Authentication with Bring!
     bring = Bring(bring_email, bring_password)
@@ -26,13 +27,13 @@ def main():
         response = bring.loadLists()
         logging.info("Raw response from bring.loadLists():\n%s", json.dumps(response, indent=2))
 
-        if 'lists' in response and response['lists']:
-            logging.info("\n--- Getting items from the first list ---")
-            first_list_uuid = response['lists'][0]['listUuid']
-            items_response = bring.getItems(first_list_uuid)
-            logging.info("Raw response from getItems for the first list:\n%s", json.dumps(items_response, indent=2))
+        # Test 2: Use explicit UUID from secret
+        if bring_list_uuid:
+            logging.info(f"\n--- Getting items from UUID: {bring_list_uuid} ---")
+            items_response = bring.getItems(bring_list_uuid)
+            logging.info("Raw response from getItems for SHOPPING UUID:\n%s", json.dumps(items_response, indent=2))
         else:
-            logging.warning("No lists found in the response or 'lists' key is missing.")
+            logging.warning("No BRING_LIST_UUID provided in environment!")
 
     except Exception as e:
         logging.error(f"Error while fetching Bring! data: {e}")
