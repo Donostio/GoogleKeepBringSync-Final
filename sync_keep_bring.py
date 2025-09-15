@@ -19,8 +19,10 @@ def get_keep_list(keep, list_id):
         if not isinstance(note, List):
             logging.error("Google Keep ID is for a Note, not a List. Please use the ID of a checklist.")
             return None
-            
-        logging.info(f"Found {len(note.all())} items in Google Keep list.")
+        
+        # Get items using the correct method for Google Keep lists
+        items = list(note.items)  # Convert to list to get actual items
+        logging.info(f"Found {len(items)} items in Google Keep list.")
         return note
     except Exception as e:
         logging.error(f"Error getting Google Keep list: {e}")
@@ -76,28 +78,54 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
     """Performs the synchronization logic between the two lists."""
     logging.info(f"Starting sync in mode: {sync_mode}")
     
+    # Get items from Google Keep list - try multiple methods
+    keep_items = []
+    try:
+        # Method 1: Use .items property
+        keep_items = list(keep_list.items)
+        logging.info(f"Using .items property: Found {len(keep_items)} items")
+    except:
+        try:
+            # Method 2: Direct iteration
+            keep_items = list(keep_list)
+            logging.info(f"Using direct iteration: Found {len(keep_items)} items")
+        except:
+            logging.error("Could not retrieve items from Google Keep list")
+            return
+    
+    if not keep_items:
+        logging.warning("No items found in Google Keep list to process")
+        return
+    
     # Normalize Google Keep items for comparison
-    normalized_keep_items_dict = {
-        ''.join(char for char in item.text.strip().lower() if char.isalnum()): item
-        for item in keep_list.all()
-    }
+    normalized_keep_items_dict = {}
+    for item in keep_items:
+        if hasattr(item, 'text') and item.text:
+            normalized_name = ''.join(char for char in item.text.strip().lower() if char.isalnum())
+            if normalized_name:  # Only add non-empty normalized names
+                normalized_keep_items_dict[normalized_name] = item
     
     logging.info(f"Normalized Keep Items: {list(normalized_keep_items_dict.keys())}")
     
     # Normalize Bring! item names for comparison
-    normalized_bring_item_names = {
-        ''.join(char for char in item.get('name', '').strip().lower() if char.isalnum())
-        for item in bring_items.get('purchase', []) if item.get('name')
-    }
+    normalized_bring_item_names = set()
+    if bring_items and 'purchase' in bring_items:
+        for item in bring_items['purchase']:
+            if item.get('name'):
+                normalized_name = ''.join(char for char in item['name'].strip().lower() if char.isalnum())
+                if normalized_name:
+                    normalized_bring_item_names.add(normalized_name)
+
+    logging.info(f"Normalized Bring Items: {list(normalized_bring_item_names)}")
 
     # Sync from Google Keep to Bring!
     if sync_mode in [0, 2]:
-        bring_list_id = bring_items.get('listUuid')
+        bring_list_id = bring_items.get('listUuid') if bring_items else None
         if bring_list_id:
             for normalized_name, item_obj in normalized_keep_items_dict.items():
                 
                 # Use the new logging function for clarity
-                is_checked = item_obj.checked
+                is_checked = getattr(item_obj, 'checked', False)
                 exists_in_bring = normalized_name in normalized_bring_item_names
                 log_item_status(item_obj.text, normalized_name, is_checked, exists_in_bring)
                 
@@ -109,11 +137,11 @@ def sync_lists(keep_client, keep_list, bring_items, bring_client, sync_mode):
                         logging.warning(f"⚠️ Could not add '{item_obj.text.strip()}' to Bring!: {e}")
 
     # Sync from Bring! to Google Keep
-    if sync_mode in [0, 1]:
+    if sync_mode in [0, 1] and bring_items and 'purchase' in bring_items:
         for item in bring_items['purchase']:
             item_spec = item.get('name', '').strip()
             normalized_spec = ''.join(char for char in item_spec.lower() if char.isalnum())
-            if item_spec and normalized_spec not in normalized_keep_items_dict:
+            if item_spec and normalized_spec and normalized_spec not in normalized_keep_items_dict:
                 try:
                     keep_list.add(item_spec)
                     keep_client.sync()
