@@ -8,14 +8,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 # Environment variables
 GOOGLE_EMAIL = os.getenv("GOOGLE_EMAIL")
-KEEP_LIST_ID = os.getenv("KEEP_LIST_ID")  # <-- Google Keep ID already set
+KEEP_LIST_ID = os.getenv("KEEP_LIST_ID")  # Google Keep ID already set
 BRING_EMAIL = os.getenv("BRING_EMAIL")
 BRING_PASSWORD = os.getenv("BRING_PASSWORD")
+BRING_LIST_UUID = os.getenv("BRING_LIST_UUID")  # from GitHub secret
 
-# Use explicit Bring! UUID instead of name
-BRING_LIST_UUID = os.getenv("BRING_LIST_UUID", "f8b6189b-d2e9-45ff-b674-76a7458d7d13")
-
-# Sync mode: 0 = both directions, 1 = Keep -> Bring only, 2 = Bring -> Keep only
+# Sync mode: 0 = both, 1 = Keep -> Bring, 2 = Bring -> Keep
 SYNC_MODE = int(os.getenv("SYNC_MODE", 0))
 
 
@@ -122,5 +120,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
