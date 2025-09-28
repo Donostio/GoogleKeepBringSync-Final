@@ -1,7 +1,8 @@
 import os
 import logging
 import gkeepapi
-from bring_api import Bring, BringItem
+from python_bring_api.bring import Bring, BringItem
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
