@@ -1,3 +1,6 @@
 gkeepapi
-python-bring-api
-# cache bust
+bring-api
+aiohttp
+mashumaro
+orjson
+
