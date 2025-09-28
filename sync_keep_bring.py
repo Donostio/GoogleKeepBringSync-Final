@@ -1,7 +1,9 @@
 import os
 import logging
+import asyncio
+import aiohttp
 import gkeepapi
-from python_bring_api.bring import Bring
+from bring_api import Bring
 
 
 # Configure logging
@@ -46,9 +48,10 @@ def get_keep_list(keep, list_id):
 
 # --- BRING FUNCTIONS ---
 
-def login_bring(email, password):
+async def login_bring(session, email, password):
     try:
-        bring = Bring(email, password)
+        bring = Bring(session, email, password)
+        await bring.login()
         logging.info("Logged in to Bring")
         return bring
     except Exception as e:
@@ -56,10 +59,10 @@ def login_bring(email, password):
     return None
 
 
-def get_bring_items(bring, list_uuid):
+async def get_bring_items(bring, list_uuid):
     try:
         logging.info(f"Fetching Bring items for list UUID: {list_uuid}")
-        return bring.getItems(list_uuid)
+        return await bring.get_list(list_uuid)
     except Exception as e:
         logging.error(f"Error fetching Bring list: {e}")
         return None
@@ -67,15 +70,15 @@ def get_bring_items(bring, list_uuid):
 
 # --- SYNC FUNCTIONS ---
 
-def sync_keep_to_bring(keep, keep_list, bring, bring_list_uuid):
+async def sync_keep_to_bring(keep, keep_list, bring, bring_list_uuid):
     keep_items = [item.text for item in keep_list.items if not item.checked]
-    bring_items = bring.getItems(bring_list_uuid)
+    bring_items = await bring.get_list(bring_list_uuid)
     bring_item_names = [i["name"] for i in bring_items["purchase"]]
 
     for item in keep_items:
         if item not in bring_item_names:
             logging.info(f"Adding '{item}' to Bring")
-            bring.saveItem(bring_list_uuid, item)
+            await bring.save_item(bring_list_uuid, item)
 
 
 def sync_bring_to_keep(keep, keep_list, bring_items):
@@ -91,34 +94,40 @@ def sync_bring_to_keep(keep, keep_list, bring_items):
 
 # --- MAIN ---
 
-def main():
+async def main_async():
     # Log into both services
     keep = login_keep(GOOGLE_EMAIL, os.getenv("GOOGLE_PASSWORD"))
-    bring = login_bring(BRING_EMAIL, BRING_PASSWORD)
+    
+    async with aiohttp.ClientSession() as session:
+        bring = await login_bring(session, BRING_EMAIL, BRING_PASSWORD)
 
-    if not keep or not bring:
-        logging.error("Login failed. Exiting.")
-        return
+        if not keep or not bring:
+            logging.error("Login failed. Exiting.")
+            return
 
-    # Fetch Keep list
-    keep_list = get_keep_list(keep, KEEP_LIST_ID)
-    if not keep_list:
-        logging.error("Google Keep list not found. Exiting.")
-        return
+        # Fetch Keep list
+        keep_list = get_keep_list(keep, KEEP_LIST_ID)
+        if not keep_list:
+            logging.error("Google Keep list not found. Exiting.")
+            return
 
-    # Fetch Bring items (using explicit UUID)
-    bring_items = get_bring_items(bring, BRING_LIST_UUID)
-    if not bring_items:
-        logging.error("Bring list not found. Exiting.")
-        return
+        # Fetch Bring items (using explicit UUID)
+        bring_items = await get_bring_items(bring, BRING_LIST_UUID)
+        if not bring_items:
+            logging.error("Bring list not found. Exiting.")
+            return
 
-    # Perform sync
-    if SYNC_MODE in [0, 1]:
-        sync_keep_to_bring(keep, keep_list, bring, BRING_LIST_UUID)
-    if SYNC_MODE in [0, 2]:
-        sync_bring_to_keep(keep, keep_list, bring_items)
+        # Perform sync
+        if SYNC_MODE in [0, 1]:
+            await sync_keep_to_bring(keep, keep_list, bring, BRING_LIST_UUID)
+        if SYNC_MODE in [0, 2]:
+            sync_bring_to_keep(keep, keep_list, bring_items)
+
+def main():
+    asyncio.run(main_async())
 
 
 if __name__ == "__main__":
     main()
+
 
