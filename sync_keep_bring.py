@@ -1,7 +1,7 @@
 import os
 import logging
 import gkeepapi
-from python_bring_api.bring import Bring, BringItem
+from python_bring_api.bring import Bring
 
 
 # Configure logging
@@ -75,7 +75,7 @@ def sync_keep_to_bring(keep, keep_list, bring, bring_list_uuid):
     for item in keep_items:
         if item not in bring_item_names:
             logging.info(f"Adding '{item}' to Bring")
-            bring.saveItem(bring_list_uuid, BringItem(item))
+            bring.saveItem(bring_list_uuid, item)
 
 
 def sync_bring_to_keep(keep, keep_list, bring_items):
@@ -121,4 +121,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-//Fix import for python_bring_api
+
