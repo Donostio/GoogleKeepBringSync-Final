@@ -3,7 +3,7 @@ import logging
 import json
 import asyncio
 import aiohttp
-from bring_api import Bring
+from python_bring_api import Bring
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
