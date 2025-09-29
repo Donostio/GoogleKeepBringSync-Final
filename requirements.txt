@@ -1,5 +1,5 @@
 gkeepapi
-bring-api
+python_bring_api
 aiohttp
 mashumaro
 orjson
