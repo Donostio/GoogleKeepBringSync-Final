@@ -3,7 +3,7 @@ import logging
 import asyncio
 import aiohttp
 import gkeepapi
-from bring_api import Bring
+from python_bring_api import Bring
 
 
 # Configure logging
