@@ -27,7 +27,11 @@ jobs:
           BRING_LIST_UUID: ${{ secrets.BRING_LIST_UUID }}
           GOOGLE_TOKEN: ${{ secrets.GOOGLE_TOKEN }}
         run: |
-          pip install gkeepapi
-          pip install bring-api
+          # Install ALL dependencies from requirements.txt
+          pip install -r requirements.txt
+          
+          # Handle the token file setup
           echo "$GOOGLE_TOKEN" > token.txt
+          
+          # Execute the script
           python sync_keep_bring.py
