@@ -28,6 +28,6 @@ jobs:
           GOOGLE_TOKEN: ${{ secrets.GOOGLE_TOKEN }}
         run: |
           pip install gkeepapi
-          pip install python-bring-api
+          pip install bring-api
           echo "$GOOGLE_TOKEN" > token.txt
           python sync_keep_bring.py
