@@ -12,6 +12,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 # Environment variables
 GOOGLE_EMAIL = os.getenv("GOOGLE_EMAIL")
 GOOGLE_PASSWORD = os.getenv("GOOGLE_PASSWORD")
+GOOGLE_MASTER_TOKEN = os.getenv("GOOGLE_MASTER_TOKEN")
 KEEP_LIST_ID = os.getenv("KEEP_LIST_ID")  # Google Keep ID already set
 BRING_EMAIL = os.getenv("BRING_EMAIL")
 BRING_PASSWORD = os.getenv("BRING_PASSWORD")
@@ -21,7 +22,6 @@ BRING_LIST_UUID = os.getenv("BRING_LIST_UUID")  # from GitHub secret
 def validate_env_vars():
     required_vars = {
         "GOOGLE_EMAIL": GOOGLE_EMAIL,
-        "GOOGLE_PASSWORD": GOOGLE_PASSWORD,
         "KEEP_LIST_ID": KEEP_LIST_ID,
         "BRING_EMAIL": BRING_EMAIL,
         "BRING_PASSWORD": BRING_PASSWORD,
@@ -35,6 +35,12 @@ def validate_env_vars():
             ", ".join(missing),
         )
         return False
+
+    if not GOOGLE_PASSWORD and not GOOGLE_MASTER_TOKEN:
+        logging.error(
+            "Provide either GOOGLE_PASSWORD or GOOGLE_MASTER_TOKEN for Google Keep authentication."
+        )
+        return False
     return True
 
 # Sync mode: 0 = both, 1 = Keep -> Bring, 2 = Bring -> Keep
@@ -43,10 +49,15 @@ SYNC_MODE = int(os.getenv("SYNC_MODE", 0))
 
 # --- KEEP FUNCTIONS ---
 
-def login_keep(email, password):
+def login_keep(email, password=None, master_token=None):
     keep = gkeepapi.Keep()
     try:
-        if keep.login(email, password):
+        if master_token:
+            keep.resume(email, master_token)
+            logging.info("Resumed Google Keep session using master token")
+            return keep
+
+        if password and keep.login(email, password):
             logging.info("Logged in to Google Keep")
             return keep
     except Exception as e:
@@ -140,7 +151,7 @@ async def main_async():
         return
 
     # Log into both services
-    keep = login_keep(GOOGLE_EMAIL, GOOGLE_PASSWORD)
+    keep = login_keep(GOOGLE_EMAIL, GOOGLE_PASSWORD, GOOGLE_MASTER_TOKEN)
 
     async with aiohttp.ClientSession() as session:
         bring = await login_bring(session, BRING_EMAIL, BRING_PASSWORD)
