@@ -1,3 +1,20 @@
+"""Utility for synchronising Google Keep lists with Bring! shopping lists.
+
+Environment configuration
+==========================
+Set the following environment variables (for example as GitHub Actions
+secrets) before running the script:
+
+* ``GOOGLE_EMAIL`` – Google account used for Keep.
+* ``KEEP_LIST_ID`` – Identifier of the Keep list to sync.
+* ``BRING_EMAIL`` / ``BRING_PASSWORD`` – Bring! credentials.
+* ``BRING_LIST_UUID`` – UUID of the Bring! list to sync.
+* Either ``GOOGLE_PASSWORD`` **or** ``GOOGLE_MASTER_TOKEN``.
+
+See the repository ``README.md`` for detailed setup steps, including how to
+generate a master token without storing the Google password in automation.
+"""
+
 import os
 import logging
 import asyncio
